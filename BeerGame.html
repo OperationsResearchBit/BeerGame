@@ -1,216 +1,146 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Beer Game: The Four Temples</title>
+    <title>Beer Game: Choose Your Role</title>
     <style>
-        body { 
-            display: flex; flex-direction: column; align-items: center; 
-            background: #2c3e50; color: white; font-family: 'Segoe UI', sans-serif; padding: 20px; margin: 0;
-        }
+        body { display: flex; flex-direction: column; align-items: center; background: #2c3e50; color: white; font-family: 'Segoe UI', sans-serif; padding: 20px; margin: 0; }
         .container { width: 1100px; margin: auto; }
         
-        /* 4 Player Temple Layout */
-        .temple-row { display: flex; justify-content: space-around; margin-bottom: 20px; }
-        .temple { 
-            width: 220px; padding: 15px; border-radius: 10px; border: 3px solid #8b4513;
-            text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-        }
-        .t-fact { background: #c0392b; } /* Factory - Red */
-        .t-dist { background: #27ae60; } /* Distributor - Green */
-        .t-whol { background: #e67e22; border-color: #ffd700; } /* Wholesaler - Orange (YOU) */
-        .t-retl { background: #2980b9; } /* Retailer - Blue */
+        /* Role Selection Bar */
+        .role-selector { display: flex; gap: 10px; margin-bottom: 20px; background: rgba(0,0,0,0.3); padding: 15px; border-radius: 50px; border: 2px solid #8b4513; }
+        .role-btn { padding: 10px 20px; border-radius: 20px; border: none; cursor: pointer; font-weight: bold; opacity: 0.6; transition: 0.3s; }
+        .role-btn.active { opacity: 1; transform: scale(1.1); box-shadow: 0 0 15px white; }
 
-        .stone-icon { font-size: 2em; margin-bottom: 5px; }
+        .temple-row { display: flex; justify-content: space-around; margin-bottom: 20px; }
+        .temple { width: 220px; padding: 15px; border-radius: 10px; border: 3px solid #8b4513; text-align: center; transition: 0.5s; }
+        .active-temple { border-color: #fff; box-shadow: 0 0 20px rgba(255,255,255,0.4); }
+
+        /* Colors matching previous request */
+        .t-fact { background: #c0392b; } .t-dist { background: #27ae60; }
+        .t-whol { background: #e67e22; } .t-retl { background: #2980b9; }
 
         .main-grid { display: grid; grid-template-columns: 1fr 320px; gap: 20px; }
+        #board-area { background: #deb887; border: 5px solid #8b4513; border-radius: 5px; height: 350px; }
+        .controls { background: rgba(0,0,0,0.4); padding: 20px; border-radius: 8px; border: 2px solid #fff; }
         
-        #board-area {
-            background: #deb887; border: 5px solid #8b4513; 
-            border-radius: 5px; position: relative; height: 350px;
-        }
-        
-        .controls { 
-            background: rgba(0,0,0,0.4); padding: 20px; border-radius: 8px; 
-            border: 2px solid #e67e22;
-        }
-
-        button { 
-            padding: 15px; font-size: 18px; cursor: pointer; 
-            background: #e67e22; border: none; color: white; 
-            border-radius: 5px; width: 100%; font-weight: bold; margin-top: 10px;
-        }
-        button:hover { background: #d35400; }
-
-        input { 
-            width: 100%; box-sizing: border-box; padding: 12px; margin: 10px 0; 
-            border-radius: 5px; border: 2px solid #8b4513; font-size: 20px; text-align: center;
-        }
-
-        .instructions {
-            background: rgba(255,255,255,0.1); padding: 15px; border-radius: 8px;
-            margin-top: 20px; font-size: 0.9em; line-height: 1.4; border-left: 4px solid #e67e22;
-        }
-        
+        button#submit-btn { padding: 15px; font-size: 18px; cursor: pointer; background: #e67e22; border: none; color: white; border-radius: 5px; width: 100%; font-weight: bold; }
+        input { width: 100%; box-sizing: border-box; padding: 12px; margin: 10px 0; border-radius: 5px; border: 2px solid #8b4513; font-size: 20px; text-align: center; }
         canvas { display: block; }
     </style>
 </head>
 <body>
 
 <div class="container">
+    <div class="role-selector">
+        <span style="line-height: 40px; margin-right: 10px;">Play As:</span>
+        <button class="role-btn t-fact" onclick="selectRole('factory')">Factory</button>
+        <button class="role-btn t-dist" onclick="selectRole('distributor')">Distributor</button>
+        <button class="role-btn t-whol active" onclick="selectRole('wholesaler')">Wholesaler</button>
+        <button class="role-btn t-retl" onclick="selectRole('retailer')">Retailer</button>
+    </div>
+
     <div class="temple-row">
-        <div class="temple t-fact">
-            <div class="stone-icon">🏮</div>
-            <b>Factory</b><br>
-            Inventory: <span id="f-inv">12</span>
-        </div>
-        <div class="temple t-dist">
-            <div class="stone-icon">🌲</div>
-            <b>Distributor</b><br>
-            Inventory: <span id="d-inv">12</span>
-        </div>
-        <div class="temple t-whol">
-            <div class="stone-icon">⭐</div>
-            <b>Wholesaler (YOU)</b><br>
-            Inventory: <span id="w-inv">12</span>
-        </div>
-        <div class="temple t-retl">
-            <div class="stone-icon">🌊</div>
-            <b>Retailer</b><br>
-            Inventory: <span id="r-inv">12</span>
-        </div>
+        <div id="temple-factory" class="temple t-fact">🏮<br><b>Factory</b><br>Inv: <span id="f-inv">12</span></div>
+        <div id="temple-distributor" class="temple t-dist">🌲<br><b>Distributor</b><br>Inv: <span id="d-inv">12</span></div>
+        <div id="temple-wholesaler" class="temple t-whol active-temple">⭐<br><b>Wholesaler</b><br>Inv: <span id="w-inv">12</span></div>
+        <div id="temple-retailer" class="temple t-retl">🌊<br><b>Retailer</b><br>Inv: <span id="r-inv">12</span></div>
     </div>
 
     <div class="main-grid">
-        <div id="board-area">
-            <canvas id="graphCanvas" width="750" height="350"></canvas>
-        </div>
-        
+        <div id="board-area"><canvas id="graphCanvas" width="750" height="350"></canvas></div>
         <div class="controls">
-            <div style="font-size: 1.4em; color: #e67e22; font-weight: bold;">Week: <span id="weekNum">1</span></div>
-            <div style="margin: 10px 0;">📦 Inventory: <b id="whInv" style="font-size: 1.5em;">12</b></div>
-            <div style="margin: 10px 0;">⚠️ Backlog: <b id="whBack" style="color: #ff4d4d; font-size: 1.5em;">0</b></div>
-            <hr style="border: 0; border-top: 1px solid #8b4513;">
-            <label>Order for Next Week:</label>
-            <input type="number" id="orderVal" value="4" min="0">
-            <button onclick="playTurn()">Place Order</button>
-            
-            <p id="tip-text" style="font-size: 0.85em; color: #ffd700; margin-top: 15px;">
-                💡 <b>Tip:</b> Keep your orders steady. Sudden changes cause massive waves!
-            </p>
+            <h3 id="role-title" style="margin:0; color:#e67e22;">Wholesaler Turn</h3>
+            <div style="font-size: 1.2em;">Week: <span id="weekNum">1</span></div>
+            <hr>
+            <div style="margin: 10px 0;">📦 Inventory: <b id="currInv">12</b></div>
+            <div style="margin: 10px 0;">⚠️ Backlog: <b id="currBack">0</b></div>
+            <label id="order-label">Order from Distributor:</label>
+            <input type="number" id="orderVal" value="4">
+            <button id="submit-btn" onclick="playTurn()">Process Week</button>
         </div>
-    </div>
-
-    <div class="instructions">
-        <b>New to the Beer Game?</b> You manage the Wholesaler. You order from the Distributor to supply the Retailer. 
-        <b>The Challenge:</b> There is a 2-week delay for all shipments. If you run out of stock, you gain a <b>Backlog (⚠️)</b>. 
-        Try to keep your <b>Inventory (📦)</b> low without hitting a backlog. At Week 5, customer demand will increase!
     </div>
 </div>
 
 <script>
     const canvas = document.getElementById('graphCanvas');
     const ctx = canvas.getContext('2d');
+    let week = 1, currentRole = 'wholesaler', history = [];
     
-    let week = 1;
-    let history = [];
-    
-    // Fixed: Initializing queues correctly with [Week1_Arrival, Week2_Arrival]
     let roles = {
-        factory: { inv: 12, back: 0, queue: [4, 4], color: '#c0392b', el: 'f-inv' },
-        distributor: { inv: 12, back: 0, queue: [4, 4], color: '#27ae60', el: 'd-inv' },
-        wholesaler: { inv: 12, back: 0, queue: [4, 4], color: '#e67e22', el: 'w-inv' },
-        retailer: { inv: 12, back: 0, queue: [4, 4], color: '#2980b9', el: 'r-inv' }
+        factory: { inv: 12, back: 0, queue: [4,4], color: '#c0392b', el: 'f-inv', title: 'Factory (Production)' },
+        distributor: { inv: 12, back: 0, queue: [4,4], color: '#27ae60', el: 'd-inv', title: 'Distributor Order' },
+        wholesaler: { inv: 12, back: 0, queue: [4,4], color: '#e67e22', el: 'w-inv', title: 'Wholesaler Order' },
+        retailer: { inv: 12, back: 0, queue: [4,4], color: '#2980b9', el: 'r-inv', title: 'Retailer Order' }
     };
 
-    function drawGridAndGraph() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    function selectRole(roleKey) {
+        currentRole = roleKey;
+        // Update UI visuals
+        document.querySelectorAll('.role-btn').forEach(b => b.classList.remove('active'));
+        document.querySelector(`.role-btn.t-${roleKey.substring(0,4)}`).classList.add('active');
+        document.querySelectorAll('.temple').forEach(t => t.classList.remove('active-temple'));
+        document.getElementById(`temple-${roleKey}`).classList.add('active-temple');
         
-        // Draw Go-Style Grid Lines
-        ctx.strokeStyle = "rgba(139, 69, 19, 0.3)"; // Dark brown lines
-        ctx.lineWidth = 1;
-        for(let i=0; i<canvas.width; i+=40) {
-            ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke();
-        }
-        for(let i=0; i<canvas.height; i+=40) {
-            ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(canvas.width, i); ctx.stroke();
-        }
+        document.getElementById('role-title').innerText = roles[roleKey].title;
+        document.getElementById('role-title').style.color = roles[roleKey].color;
+        document.getElementById('submit-btn').style.background = roles[roleKey].color;
+        updateUI();
+    }
 
+    function drawGrid() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.strokeStyle = "rgba(139, 69, 19, 0.2)";
+        for(let i=0; i<canvas.width; i+=40) { ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke(); }
+        for(let i=0; i<canvas.height; i+=40) { ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(canvas.width, i); ctx.stroke(); }
+        
         if (history.length < 2) return;
-
         const xStep = (canvas.width - 40) / 25;
-        const keys = ['factory', 'distributor', 'wholesaler', 'retailer'];
-
-        keys.forEach((key) => {
-            const role = roles[key];
-            ctx.beginPath();
-            ctx.strokeStyle = role.color;
-            ctx.lineWidth = (key === 'wholesaler') ? 5 : 2;
-            
+        ['factory', 'distributor', 'wholesaler', 'retailer'].forEach(key => {
+            ctx.beginPath(); ctx.strokeStyle = roles[key].color;
+            ctx.lineWidth = (key === currentRole) ? 6 : 2;
             history.forEach((data, i) => {
-                let x = i * xStep + 20;
-                let y = (canvas.height / 2) - (data[key] * 4);
-                if (i === 0) ctx.moveTo(x, y);
-                else ctx.lineTo(x, y);
+                let x = i * xStep + 20, y = (canvas.height / 2) - (data[key] * 4);
+                if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
             });
             ctx.stroke();
         });
     }
 
     function playTurn() {
-        const pOrder = parseInt(document.getElementById('orderVal').value) || 0;
+        const order = parseInt(document.getElementById('orderVal').value) || 0;
         const demand = week >= 5 ? 8 : 4;
 
-        if(week === 5) {
-            document.getElementById('tip-text').innerHTML = "⚠️ <b>CRITICAL:</b> Customer demand just doubled to 8! Supply is now tightening.";
-        }
+        history.push({ factory: roles.factory.inv - roles.factory.back, distributor: roles.distributor.inv - roles.distributor.back, wholesaler: roles.wholesaler.inv - roles.wholesaler.back, retailer: roles.retailer.inv - roles.retailer.back });
 
-        // 1. Snapshot current inventory for graph
-        history.push({
-            factory: roles.factory.inv - roles.factory.back,
-            distributor: roles.distributor.inv - roles.distributor.back,
-            wholesaler: roles.wholesaler.inv - roles.wholesaler.back,
-            retailer: roles.retailer.inv - roles.retailer.back
-        });
+        // Logic: The role you play uses YOUR order, others use AI (keeping it steady at 4)
+        updateRole(roles.retailer, demand, (currentRole === 'retailer' ? order : 4));
+        updateRole(roles.wholesaler, 4, (currentRole === 'wholesaler' ? order : 4));
+        updateRole(roles.distributor, (currentRole === 'wholesaler' ? order : 4), (currentRole === 'distributor' ? order : 4));
+        updateRole(roles.factory, (currentRole === 'distributor' ? order : 4), (currentRole === 'factory' ? order : 4));
 
-        // 2. Logic update for all roles
-        updateRole(roles.retailer, demand, 4);
-        updateRole(roles.wholesaler, 4, pOrder); 
-        updateRole(roles.distributor, pOrder, 4);
-        updateRole(roles.factory, 4, 4);
-
-        // 3. Update Text UI
         week++;
-        document.getElementById('weekNum').innerText = week;
-        document.getElementById('whInv').innerText = roles.wholesaler.inv;
-        document.getElementById('whBack').innerText = roles.wholesaler.back;
-        
-        // 4. Update Temple Inventory Numbers
-        for(let key in roles) {
-            document.getElementById(roles[key].el).innerText = roles[key].inv;
-        }
-        
-        drawGridAndGraph();
+        updateUI();
+        drawGrid();
     }
 
-    function updateRole(role, incomingOrder, outgoingOrder) {
-        // Receive goods from 2 weeks ago
-        let received = role.queue.shift();
-        role.inv += received;
-        
-        // Fulfill current orders
-        let totalNeeded = incomingOrder + role.back;
-        let shipped = Math.min(role.inv, totalNeeded);
+    function updateUI() {
+        document.getElementById('weekNum').innerText = week;
+        document.getElementById('currInv').innerText = roles[currentRole].inv;
+        document.getElementById('currBack').innerText = roles[currentRole].back;
+        for(let key in roles) { document.getElementById(roles[key].el).innerText = roles[key].inv; }
+    }
+
+    function updateRole(role, incomingDemand, outgoingOrder) {
+        role.inv += role.queue.shift();
+        let needed = incomingDemand + role.back;
+        let shipped = Math.min(role.inv, needed);
         role.inv -= shipped;
-        role.back = totalNeeded - shipped;
-        
-        // Send order to next person in chain (arrives in 2 weeks)
+        role.back = needed - shipped;
         role.queue.push(outgoingOrder);
     }
 
-    // Initial draw
-    drawGridAndGraph();
+    drawGrid();
 </script>
 </body>
 </html>

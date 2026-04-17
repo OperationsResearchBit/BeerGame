@@ -1,97 +1,134 @@
 
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Beer Game: Go IO</title>
+    <title>Beer Game: The Four Temples</title>
     <style>
         body { 
             display: flex; flex-direction: column; align-items: center; 
-            background: #2c3e50; color: white; font-family: sans-serif; padding: 20px; margin: 0;
+            background: #2c3e50; color: white; font-family: 'Segoe UI', sans-serif; padding: 20px; margin: 0;
         }
-        .grid { 
-            display: grid; grid-template-columns: 1fr 300px; gap: 20px; 
-            width: 1000px; margin: 20px auto; 
+        .container { width: 1100px; margin: auto; }
+        
+        /* 4 Player Temple Layout */
+        .temple-row { display: flex; justify-content: space-around; margin-bottom: 20px; }
+        .temple { 
+            width: 220px; padding: 15px; border-radius: 10px; border: 3px solid #8b4513;
+            text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.5);
         }
-        /* Match your Go Board colors */
+        .t-fact { background: #c0392b; } /* Factory - Red */
+        .t-dist { background: #27ae60; } /* Distributor - Green */
+        .t-whol { background: #e67e22; border-color: #ffd700; } /* Wholesaler - Orange (YOU) */
+        .t-retl { background: #2980b9; } /* Retailer - Blue */
+
+        .stone-icon { font-size: 2em; margin-bottom: 5px; }
+
+        .main-grid { display: grid; grid-template-columns: 1fr 320px; gap: 20px; }
+        
         #board-area {
             background: #deb887; border: 5px solid #8b4513; 
-            box-shadow: 0 0 20px rgba(0,0,0,0.5); border-radius: 5px;
-            position: relative; height: 400px; overflow: hidden;
+            border-radius: 5px; position: relative; height: 350px;
         }
-        canvas { display: block; }
+        
         .controls { 
-            background: rgba(0,0,0,0.3); padding: 20px; border-radius: 8px; 
-            border: 2px solid #8b4513; height: fit-content;
+            background: rgba(0,0,0,0.4); padding: 20px; border-radius: 8px; 
+            border: 2px solid #e67e22;
         }
+
         button { 
-            padding: 15px; font-size: 16px; cursor: pointer; 
+            padding: 15px; font-size: 18px; cursor: pointer; 
             background: #e67e22; border: none; color: white; 
             border-radius: 5px; width: 100%; font-weight: bold; margin-top: 10px;
         }
         button:hover { background: #d35400; }
-        .role-indicator { display: flex; justify-content: space-around; width: 1000px; }
-        .stone { 
-            width: 60px; height: 60px; border-radius: 50%; 
-            display: flex; align-items: center; justify-content: center;
-            font-weight: bold; border: 2px solid #333; box-shadow: 2px 2px 5px rgba(0,0,0,0.5);
-        }
-        .black { background: #000; color: white; }
-        .white { background: #fff; color: #000; }
+
         input { 
             width: 100%; box-sizing: border-box; padding: 12px; margin: 10px 0; 
-            border-radius: 5px; border: 1px solid #8b4513; font-size: 18px;
+            border-radius: 5px; border: 2px solid #8b4513; font-size: 20px; text-align: center;
         }
-        #status { font-size: 1.2rem; margin-bottom: 10px; color: #e67e22; font-weight: bold; }
-        .legend { font-size: 12px; color: #000; padding: 10px; font-weight: bold; }
+
+        .instructions {
+            background: rgba(255,255,255,0.1); padding: 15px; border-radius: 8px;
+            margin-top: 20px; font-size: 0.9em; line-height: 1.4; border-left: 4px solid #e67e22;
+        }
+        
+        canvas { display: block; }
     </style>
 </head>
 <body>
 
-    <div class="role-indicator">
-        <div class="stone black">Fact.</div>
-        <div class="stone white">Dist.</div>
-        <div class="stone black" style="border: 3px solid #e67e22;">YOU</div>
-        <div class="stone white">Retail</div>
+<div class="container">
+    <div class="temple-row">
+        <div class="temple t-fact">
+            <div class="stone-icon">🏮</div>
+            <b>Factory</b><br>
+            Inventory: <span id="f-inv">12</span>
+        </div>
+        <div class="temple t-dist">
+            <div class="stone-icon">🌲</div>
+            <b>Distributor</b><br>
+            Inventory: <span id="d-inv">12</span>
+        </div>
+        <div class="temple t-whol">
+            <div class="stone-icon">⭐</div>
+            <b>Wholesaler (YOU)</b><br>
+            Inventory: <span id="w-inv">12</span>
+        </div>
+        <div class="temple t-retl">
+            <div class="stone-icon">🌊</div>
+            <b>Retailer</b><br>
+            Inventory: <span id="r-inv">12</span>
+        </div>
     </div>
 
-    <div class="grid">
+    <div class="main-grid">
         <div id="board-area">
-            <div class="legend">In-Transit Waves (Stones vs Time)</div>
-            <canvas id="graphCanvas" width="670" height="350"></canvas>
+            <canvas id="graphCanvas" width="750" height="350"></canvas>
         </div>
         
         <div class="controls">
-            <div id="status">Week: <span id="weekNum">1</span></div>
-            <div style="margin-bottom: 5px;">Inventory: <b id="whInv">12</b></div>
-            <div style="margin-bottom: 15px;">Backlog: <b id="whBack">0</b></div>
-            <hr style="border: 0; border-top: 1px solid #8b4513; margin: 15px 0;">
-            <label>Order Stones:</label>
+            <div style="font-size: 1.4em; color: #e67e22; font-weight: bold;">Week: <span id="weekNum">1</span></div>
+            <div style="margin: 10px 0;">📦 Inventory: <b id="whInv" style="font-size: 1.5em;">12</b></div>
+            <div style="margin: 10px 0;">⚠️ Backlog: <b id="whBack" style="color: #ff4d4d; font-size: 1.5em;">0</b></div>
+            <hr style="border: 0; border-top: 1px solid #8b4513;">
+            <label>Order for Next Week:</label>
             <input type="number" id="orderVal" value="4" min="0">
-            <button onclick="playTurn()">Place Stones</button>
+            <button onclick="playTurn()">Place Order</button>
+            
+            <p id="tip-text" style="font-size: 0.85em; color: #ffd700; margin-top: 15px;">
+                💡 <b>Tip:</b> Keep your orders steady. Sudden changes cause massive waves!
+            </p>
         </div>
     </div>
+
+    <div class="instructions">
+        <b>New to the Beer Game?</b> You manage the Wholesaler. You order from the Distributor to supply the Retailer. 
+        <b>The Challenge:</b> There is a 2-week delay for all shipments. If you run out of stock, you gain a <b>Backlog (⚠️)</b>. 
+        Try to keep your <b>Inventory (📦)</b> low without hitting a backlog. At Week 5, customer demand will increase!
+    </div>
+</div>
 
 <script>
     const canvas = document.getElementById('graphCanvas');
     const ctx = canvas.getContext('2d');
     
     let week = 1;
-    let history = []; // Stores [factoryInv, distInv, whInv, retInv]
+    let history = [];
     
+    // Fixed: Initializing queues correctly with [Week1_Arrival, Week2_Arrival]
     let roles = {
-        factory: { inv: 12, back: 0, queue: [4, 4] },
-        distributor: { inv: 12, back: 0, queue: [4, 4] },
-        wholesaler: { inv: 12, back: 0, queue: [4, 4] },
-        retailer: { inv: 12, back: 0, queue: [4, 4] }
+        factory: { inv: 12, back: 0, queue: [4, 4], color: '#c0392b', el: 'f-inv' },
+        distributor: { inv: 12, back: 0, queue: [4, 4], color: '#27ae60', el: 'd-inv' },
+        wholesaler: { inv: 12, back: 0, queue: [4, 4], color: '#e67e22', el: 'w-inv' },
+        retailer: { inv: 12, back: 0, queue: [4, 4], color: '#2980b9', el: 'r-inv' }
     };
 
-    function drawGraph() {
+    function drawGridAndGraph() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
-        // Draw Grid Lines (Go style)
-        ctx.strokeStyle = "rgba(139, 69, 19, 0.2)";
+        // Draw Go-Style Grid Lines
+        ctx.strokeStyle = "rgba(139, 69, 19, 0.3)"; // Dark brown lines
         ctx.lineWidth = 1;
         for(let i=0; i<canvas.width; i+=40) {
             ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke();
@@ -102,18 +139,18 @@
 
         if (history.length < 2) return;
 
-        const colors = ['#000', '#fff', '#e67e22', '#555']; // Factory, Dist, WH, Retail
-        const padding = 50;
-        const xStep = (canvas.width - padding) / 20;
+        const xStep = (canvas.width - 40) / 25;
+        const keys = ['factory', 'distributor', 'wholesaler', 'retailer'];
 
-        colors.forEach((color, roleIdx) => {
+        keys.forEach((key) => {
+            const role = roles[key];
             ctx.beginPath();
-            ctx.strokeStyle = color;
-            ctx.lineWidth = (roleIdx === 2) ? 4 : 2; // Make player line thicker
+            ctx.strokeStyle = role.color;
+            ctx.lineWidth = (key === 'wholesaler') ? 5 : 2;
             
             history.forEach((data, i) => {
-                let x = i * xStep + 10;
-                let y = canvas.height / 2 - (data[roleIdx] * 5); // Scale and center
+                let x = i * xStep + 20;
+                let y = (canvas.height / 2) - (data[key] * 4);
                 if (i === 0) ctx.moveTo(x, y);
                 else ctx.lineTo(x, y);
             });
@@ -123,41 +160,57 @@
 
     function playTurn() {
         const pOrder = parseInt(document.getElementById('orderVal').value) || 0;
-        const demand = week >= 5 ? 8 : 4; // The demand shock
+        const demand = week >= 5 ? 8 : 4;
 
-        // Save current net inventory to history before updating
-        history.push([
-            roles.factory.inv - roles.factory.back,
-            roles.distributor.inv - roles.distributor.back,
-            roles.wholesaler.inv - roles.wholesaler.back,
-            roles.retailer.inv - roles.retailer.back
-        ]);
+        if(week === 5) {
+            document.getElementById('tip-text').innerHTML = "⚠️ <b>CRITICAL:</b> Customer demand just doubled to 8! Supply is now tightening.";
+        }
 
-        // Logic update
+        // 1. Snapshot current inventory for graph
+        history.push({
+            factory: roles.factory.inv - roles.factory.back,
+            distributor: roles.distributor.inv - roles.distributor.back,
+            wholesaler: roles.wholesaler.inv - roles.wholesaler.back,
+            retailer: roles.retailer.inv - roles.retailer.back
+        });
+
+        // 2. Logic update for all roles
         updateRole(roles.retailer, demand, 4);
         updateRole(roles.wholesaler, 4, pOrder); 
         updateRole(roles.distributor, pOrder, 4);
         updateRole(roles.factory, 4, 4);
 
+        // 3. Update Text UI
         week++;
         document.getElementById('weekNum').innerText = week;
         document.getElementById('whInv').innerText = roles.wholesaler.inv;
         document.getElementById('whBack').innerText = roles.wholesaler.back;
         
-        drawGraph();
+        // 4. Update Temple Inventory Numbers
+        for(let key in roles) {
+            document.getElementById(roles[key].el).innerText = roles[key].inv;
+        }
+        
+        drawGridAndGraph();
     }
 
     function updateRole(role, incomingOrder, outgoingOrder) {
-        role.inv += role.queue.shift();
+        // Receive goods from 2 weeks ago
+        let received = role.queue.shift();
+        role.inv += received;
+        
+        // Fulfill current orders
         let totalNeeded = incomingOrder + role.back;
         let shipped = Math.min(role.inv, totalNeeded);
         role.inv -= shipped;
         role.back = totalNeeded - shipped;
+        
+        // Send order to next person in chain (arrives in 2 weeks)
         role.queue.push(outgoingOrder);
     }
 
-    // Initialize first data point
-    playTurn(); 
+    // Initial draw
+    drawGridAndGraph();
 </script>
 </body>
 </html>

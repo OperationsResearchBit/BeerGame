@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>The Beer Game: Supply Chain Sim</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #f4f4f9; display: flex; justify-content: center; padding: 20px; }
+        #game-container { width: 900px; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 20px; }
+        
+        .chain-viz { display: flex; justify-content: space-between; margin-bottom: 30px; background: #2c3e50; padding: 20px; border-radius: 8px; color: white; text-align: center; }
+        .node { flex: 1; border-right: 1px solid #444; padding: 5px; }
+        .node:last-child { border: none; }
+        .node b { display: block; color: #f1c40f; font-size: 1.2em; }
+
+        .dashboard { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .stat-card { background: #f9f9f9; padding: 20px; border: 1px solid #ddd; border-radius: 8px; }
+        .order-panel { background: #e8f4fd; padding: 20px; border: 1px solid #3498db; border-radius: 8px; text-align: center; }
+        
+        input { width: 80px; padding: 10px; font-size: 1.1em; border: 1px solid #ccc; border-radius: 4px; margin-right: 10px; }
+        button { padding: 10px 20px; background: #27ae60; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        button:hover { background: #219150; }
+        
+        #log { height: 150px; overflow-y: auto; background: #333; color: #50fa7b; padding: 10px; font-family: monospace; font-size: 0.9em; margin-top: 20px; border-radius: 4px; }
+        .cost { color: #e74c3c; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <header>
+        <h2>🍺 The Beer Game <small>(Week <span id="week">1</span>)</small></h2>
+        <div>Total Chain Cost: <span id="total-cost" class="cost">$0</span></div>
+    </header>
+
+    <div class="chain-viz">
+        <div class="node">Factory<b id="viz-factory">12</b></div>
+        <div class="node">Distributor<b id="viz-distributor">12</b></div>
+        <div class="node">Wholesaler (YOU)<b id="viz-wholesaler" style="color:#3498db">12</b></div>
+        <div class="node">Retailer<b id="viz-retailer">12</b></div>
+    </div>
+
+    <div class="dashboard">
+        <div class="stat-card">
+            <h3>Your Warehouse</h3>
+            <p>Inventory: <b id="inv">12</b> units</p>
+            <p>Backlog: <b id="back">0</b> units</p>
+            <p>Incoming (In Transit): <b id="transit">4</b> units</p>
+        </div>
+        
+        <div class="order-panel">
+            <h3>Weekly Decision</h3>
+            <p>Incoming Order from Retailer: <b id="incoming-order-val">4</b></p>
+            <p>How many cases to order from Distributor?</p>
+            <input type="number" id="order-input" value="4" min="0">
+            <button onclick="nextTurn()">Place Order</button>
+        </div>
+    </div>
+
+    <div id="log">Welcome. Customer demand is steady at 4 units... for now.</div>
+</div>
+
+<script>
+    // Game State
+    let week = 1;
+    let totalCost = 0;
+    
+    // Role state: [Inventory, Backlog, [ShippingQueue]]
+    // We treat incoming items as a queue to simulate the 2-week lead time
+    let wholesaler = { inv: 12, back: 0, queue: [4, 4], costs: 0 };
+    let retailer = { inv: 12, back: 0, queue: [4, 4] };
+    let distributor = { inv: 12, back: 0, queue: [4, 4] };
+    let factory = { inv: 20, back: 0, queue: [4, 4] };
+
+    function nextTurn() {
+        const playerOrder = parseInt(document.getElementById('order-input').value) || 0;
+        const customerDemand = week > 4 ? 8 : 4; // Sudden jump in demand at week 5
+
+        // 1. Process Retailer (Downstream)
+        const retailOrderToWholesaler = updateNode(retailer, customerDemand, 4); 
+
+        // 2. Process Player (Wholesaler)
+        const wholesalerOrderToDist = playerOrder;
+        const actualShippedToRetail = processShipping(wholesaler, retailOrderToWholesaler);
+        
+        // 3. Update Wholesaler Inventory from Incoming Queue (from Distributor)
+        const receivedFromDist = wholesaler.queue.shift();
+        wholesaler.inv += receivedFromDist;
+        wholesaler.queue.push(4); // Simple AI: Distributor always sends something
+
+        // 4. Calculate Costs ($0.50 per inventory, $1.00 per backlog)
+        let weeklyCost = (wholesaler.inv * 0.5) + (wholesaler.back * 1.0);
+        wholesaler.costs += weeklyCost;
+        totalCost += weeklyCost;
+
+        // 5. Update UI
+        week++;
+        document.getElementById('week').innerText = week;
+        document.getElementById('inv').innerText = wholesaler.inv;
+        document.getElementById('back').innerText = wholesaler.back;
+        document.getElementById('transit').innerText = wholesaler.queue[0];
+        document.getElementById('incoming-order-val').innerText = retailOrderToWholesaler;
+        document.getElementById('total-cost').innerText = "$" + totalCost.toFixed(2);
+        
+        document.getElementById('viz-wholesaler').innerText = wholesaler.inv;
+        
+        addLog(`Week ${week-1}: Shipped ${actualShippedToRetail}. Received ${receivedFromDist}. Cost: $${weeklyCost.toFixed(2)}`);
+        
+        if(week > 20) {
+            alert("Game Over! Total Cost: $" + totalCost.toFixed(2));
+            location.reload();
+        }
+    }
+
+    function processShipping(node, incomingOrder) {
+        let totalDemand = incomingOrder + node.back;
+        let amountToShip = Math.min(node.inv, totalDemand);
+        
+        node.inv -= amountToShip;
+        node.back = totalDemand - amountToShip;
+        
+        return amountToShip;
+    }
+
+    // Simple AI for other nodes
+    function updateNode(node, demand, fixedOrder) {
+        processShipping(node, demand);
+        const incoming = node.queue.shift();
+        node.inv += incoming;
+        node.queue.push(fixedOrder);
+        return fixedOrder;
+    }
+
+    function addLog(msg) {
+        const log = document.getElementById('log');
+        log.innerHTML = `<div>> ${msg}</div>` + log.innerHTML;
+    }
+</script>
+</body>
+</html>

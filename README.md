@@ -1,1 +1,3 @@
 # BeerGame
+
+agpl 3
